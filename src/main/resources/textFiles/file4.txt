@@ -1,0 +1,2 @@
+A blind text like this gives you
+information about the selected font.
