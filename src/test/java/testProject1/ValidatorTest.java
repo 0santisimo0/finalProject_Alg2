@@ -1,4 +1,6 @@
-import org.example.TextValidator;
+package testProject1;
+
+import org.example.project1.TextValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
@@ -17,8 +19,8 @@ public class ValidatorTest {
 
     @Test
     public void performFirstTestCase() {
-        String file1 = "src/main/resources/textFiles/file1.txt";
-        String file2 = "src/main/resources/textFiles/file2.txt";
+        String file1 = "src/main/resources/project1Res/textFiles/file1.txt";
+        String file2 = "src/main/resources/project1Res/textFiles/file2.txt";
 
         double expectedPlagiarismPercentage = 95.83;
         double actualPlagiarismPercentage = textValidator.getPlagiarismPercentage(file1, file2);
@@ -33,8 +35,8 @@ public class ValidatorTest {
 
     @Test
     public void performSecondTestCase() {
-        String file1 = "src/main/resources/textFiles/file3.txt";
-        String file2 = "src/main/resources/textFiles/file4.txt";
+        String file1 = "src/main/resources/project1Res/textFiles/file3.txt";
+        String file2 = "src/main/resources/project1Res/textFiles/file4.txt";
 
         double expectedPlagiarismPercentage = 33.33;
         double actualPlagiarismPercentage = textValidator.getPlagiarismPercentage(file1, file2);
@@ -49,8 +51,8 @@ public class ValidatorTest {
 
     @Test
     public void performThirdTestCase() {
-        String file1 = "src/main/resources/textFiles/file5.txt";
-        String file2 = "src/main/resources/textFiles/file6.txt";
+        String file1 = "src/main/resources/project1Res/textFiles/file5.txt";
+        String file2 = "src/main/resources/project1Res/textFiles/file6.txt";
 
         double expectedPlagiarismPercentage = 80.00;
         double actualPlagiarismPercentage = textValidator.getPlagiarismPercentage(file1, file2);

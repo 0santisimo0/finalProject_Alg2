@@ -1,0 +1,14 @@
+A
+B
+C
+X
+R
+M
+N
+A X 12
+X N 8
+X R 11
+R M 20
+R C 25
+A B 15
+N R 13
