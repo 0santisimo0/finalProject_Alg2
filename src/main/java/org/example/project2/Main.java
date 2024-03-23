@@ -15,11 +15,7 @@ public class Main {
         List<Edge> mst = graph.kruskal(10);
         System.out.println(graph.printResultantMST(mst));
 
-        System.out.println("Árbol de expansión maxima (Kruskal):");
-        for (Edge edge : mst) {
-            System.out.println(edge.getSource().getValue() + " - " + edge.getDestination().getValue() + " : " + edge.getWeight());
-        }
-
-        System.out.println(graph.divideIntoNGroups(3,mst));
+        String groups = graph.divideIntoNGroups(3,mst);
+        System.out.println(groups);
     }
 }

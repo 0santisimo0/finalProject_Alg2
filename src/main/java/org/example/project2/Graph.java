@@ -67,7 +67,7 @@ public class Graph{
         System.out.println(resultMstEdges);
         List<List<Edge>> groups = cutMstIntoNGroups(n, mst, new ArrayList<>());
 
-        return groups.toString();
+        return printResultantGroups(groups);
     }
 
     public List<List<Edge>> cutMstIntoNGroups(int n, List<Edge> mst, List<List<Edge>> groups) {
@@ -82,12 +82,7 @@ public class Graph{
         List<Edge> aux = new ArrayList<>();
 
         if (vertexInMst(minorRemoved, mst)) lonelyGroup = null;
-        else {
-            System.out.println("entro al aelse "+lonelyGroup.value);
-            aux.add(new Edge(lonelyGroup,lonelyGroup,minorRemoved.getWeight()));
-        }
-
-        System.out.println(minorRemoved);
+        else aux.add(new Edge(lonelyGroup,lonelyGroup,minorRemoved.getWeight()));
 
         Queue<Edge> queue = new LinkedList<>(mst);
         DisjointSet disjointSet = new DisjointSet();
@@ -107,6 +102,7 @@ public class Graph{
                     disjointSet.addEdgeToGroup(destination, edge);
             }
         }
+
         if (groups.contains(mst)) {
             List<List<Edge>> edges = disjointSet.getGroups();
             groups.set(groups.indexOf(mst), edges.get(0));
@@ -116,17 +112,20 @@ public class Graph{
             groups.addAll(disjointSet.getGroups());
             if (lonelyGroup != null) groups.add(aux);
         }
-        System.out.println("Groups");
 
+        printGroup(groups);
+        cutMstIntoNGroups(n, getLessWeightGroup(groups, resultMstEdges.get(groups.size())), groups);
+        return groups;
+    }
+
+    private void printGroup(List<List<Edge>> groups) {
+        System.out.println("Groups");
         for (List<Edge> group : groups) {
             for (Edge edge : group) {
                 System.out.print(edge+", ");
             }
             System.out.println("---");
         }
-
-        cutMstIntoNGroups(n, getLessWeightGroup(groups, resultMstEdges.get(groups.size())), groups);
-        return groups;
     }
 
     private boolean vertexInMst(Edge minorRemoved, List<Edge> mst) {
@@ -166,6 +165,15 @@ public class Graph{
                     || value.getDestination().equals(edge.getDestination())) return true;
         }
         return false;
+    }
+
+    public String printResultantGroups(List<List<Edge>> groups) {
+        StringBuilder str = new StringBuilder();
+        str.append("\nGroups Result: \n");
+        for (List<Edge> edges : groups) {
+            str.append(printResultantMST(edges)).append("\n");
+        }
+        return str.toString();
     }
 
     public String printResultantMST(List<Edge> edgeList) {
