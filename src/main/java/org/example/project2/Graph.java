@@ -64,8 +64,8 @@ public class Graph{
         if (n > resultMst.size() || n == 0) return "It is not possible";
         resultMstEdges.stream().sorted(Comparator.comparingInt(Edge::getWeight));
 
-        System.out.println(resultMstEdges);
         List<List<Edge>> groups = cutMstIntoNGroups(n, mst, new ArrayList<>());
+        System.out.println(getGroupFriendshipLevel(groups,mst));
 
         return printResultantGroups(groups);
     }
@@ -113,19 +113,41 @@ public class Graph{
             if (lonelyGroup != null) groups.add(aux);
         }
 
-        printGroup(groups);
         cutMstIntoNGroups(n, getLessWeightGroup(groups, resultMstEdges.get(groups.size())), groups);
         return groups;
     }
 
-    private void printGroup(List<List<Edge>> groups) {
-        System.out.println("Groups");
-        for (List<Edge> group : groups) {
-            for (Edge edge : group) {
-                System.out.print(edge+", ");
+    public String getGroupFriendshipLevel(List<List<Edge>> groups, List<Edge> mstEdges) {
+        List<Edge> closestGroup = new ArrayList<>();
+        List<Edge> notClosestGroup = new ArrayList<>();
+        mstEdges.sort(Comparator.comparingInt(Edge::getWeight));
+        Edge closestRelation = mstEdges.get(mstEdges.size()-1);
+        Edge worstRelation = mstEdges.get(mstEdges.size()-1);
+        for (List<Edge> edges : groups) {
+            if (getVertexSize(edges) > 1) {
+                for (Edge edge : edges) {
+                    if (edge.equals(closestRelation)) closestGroup = edges;
+                    if (edge.getWeight() < worstRelation.getWeight()) {
+                        worstRelation = edge;
+                        notClosestGroup = edges;
+                    }
+                }
             }
-            System.out.println("---");
         }
+
+        return "\nGroup with strongest friendly relationship: "
+                +((!closestGroup.isEmpty()) ? printResultantEdges(closestGroup):"None")
+                +"\nGroup with least friendly relationship: "
+                +((!notClosestGroup.isEmpty()) ? printResultantEdges(notClosestGroup):"None");
+    }
+
+    private int getVertexSize(List<Edge> edges) {
+        Set<String> resultList = new HashSet<>();
+
+        for (Edge edge : edges) {
+            resultList.add(edge.getSource().getValue());
+            resultList.add(edge.getDestination().getValue());
+        } return resultList.size();
     }
 
     private boolean vertexInMst(Edge minorRemoved, List<Edge> mst) {
@@ -171,12 +193,12 @@ public class Graph{
         StringBuilder str = new StringBuilder();
         str.append("\nGroups Result: \n");
         for (List<Edge> edges : groups) {
-            str.append(printResultantMST(edges)).append("\n");
+            str.append(printResultantEdges(edges)).append("\n");
         }
         return str.toString();
     }
 
-    public String printResultantMST(List<Edge> edgeList) {
+    public String printResultantEdges(List<Edge> edgeList) {
         Set<String> resultList = new HashSet<>();
 
         for (Edge edge : edgeList) {

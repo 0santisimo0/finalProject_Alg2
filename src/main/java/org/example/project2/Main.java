@@ -13,7 +13,7 @@ public class Main {
         Graph graph = graphBuilder.buildGraph(list);
 
         List<Edge> mst = graph.kruskal(10);
-        System.out.println(graph.printResultantMST(mst));
+        System.out.println(graph.printResultantEdges(mst));
 
         String groups = graph.divideIntoNGroups(3,mst);
         System.out.println(groups);
