@@ -4,9 +4,12 @@ import java.util.*;
 
 public class Graph{
     private Map<Vertex, List<Edge>> vertexMap;
-
+    private Set<Vertex> resultMst;
+    private List<Edge> resultMstEdges;
+    private Vertex lonelyGroup;
     public Graph() {
         this.vertexMap = new HashMap<>();
+        this.resultMst = new HashSet<>();
     }
 
     public void addVertex(Vertex vertex) {
@@ -32,7 +35,7 @@ public class Graph{
 
         for (List<Edge> edgeList : vertexMap.values()) priorityQueue.addAll(edgeList);
 
-        DisjoinSet disjointSet = new DisjoinSet();
+        DisjointSet disjointSet = new DisjointSet();
         for (Vertex vertex : vertexMap.keySet()) {
             disjointSet.makeSet(vertex);
         }
@@ -46,7 +49,6 @@ public class Graph{
             if (disjointSet.find(source) != disjointSet.find(destination)
                     && weight > friendshipValue) {
                 if (isStillConnected(result, edge)) {
-                    System.out.println("ss");
                     result.add(edge);
                     disjointSet.union(source, destination);
                 }
@@ -54,40 +56,99 @@ public class Graph{
             }
         }
 
+        resultMstEdges = result;
         return result;
     }
 
-    public List<Edge> prim(int friendshipValue) {
-        List<Edge> result = new ArrayList<>();
-        Set<Vertex> visited = new HashSet<>();
-        PriorityQueue<Edge> priorityQueue = new PriorityQueue<>(vertexMap.size(),
-                new Edge(null,null,0));
+    public String divideIntoNGroups(int n, List<Edge> mst) {
+        if (n > resultMst.size() || n == 0) return "It is not possible";
+        resultMstEdges.stream().sorted(Comparator.comparingInt(Edge::getWeight));
 
-        for (List<Edge> edgeList : vertexMap.values()) priorityQueue.addAll(edgeList);
+        System.out.println(resultMstEdges);
+        List<List<Edge>> groups = cutMstIntoNGroups(n, mst, new ArrayList<>());
 
-        while (!priorityQueue.isEmpty() && visited.size() < vertexMap.size()) {
-            Edge edge = priorityQueue.poll();
-            Vertex u = edge.getSource();
-            Vertex v = edge.getDestination();
+        return groups.toString();
+    }
 
-            // Si alguno de los extremos de la arista no está en el conjunto visitado,
-            // agregar la arista al resultado y marcar el vértice visitado
-            if (!(visited.contains(u) && visited.contains(v)) && edge.getWeight() > friendshipValue) {
-                result.add(edge);
-                Vertex nextVertex = visited.contains(u) ? v : u;
-                visited.add(nextVertex);
+    public List<List<Edge>> cutMstIntoNGroups(int n, List<Edge> mst, List<List<Edge>> groups) {
+        if (n == groups.size()) return groups;
+        if (n == 1) {
+            groups.add(mst);
+            return groups;
+        } if (mst.isEmpty()) return groups;
 
-                // Agregar las aristas adyacentes del nuevo vértice al PriorityQueue
-                for (Edge adjacentEdge : vertexMap.get(nextVertex)) {
-                    if (!visited.contains(adjacentEdge.getDestination())) {
-                        priorityQueue.add(adjacentEdge);
-                    }
-                }
-            }
+        mst.sort(Comparator.comparingInt(Edge::getWeight).reversed());
+        Edge minorRemoved = mst.remove(mst.size()-1);
+        List<Edge> aux = new ArrayList<>();
+
+        if (vertexInMst(minorRemoved, mst)) lonelyGroup = null;
+        else {
+            System.out.println("entro al aelse "+lonelyGroup.value);
+            aux.add(new Edge(lonelyGroup,lonelyGroup,minorRemoved.getWeight()));
         }
 
-        return result;
+        System.out.println(minorRemoved);
+
+        Queue<Edge> queue = new LinkedList<>(mst);
+        DisjointSet disjointSet = new DisjointSet();
+
+        for (Edge edge : mst) {
+                disjointSet.makeSet(edge.getSource());
+                disjointSet.makeSet(edge.getDestination());
+        }
+
+        while (!queue.isEmpty()) {
+            Edge edge = queue.poll();
+            Vertex source = edge.getSource();
+            Vertex destination = edge.getDestination();
+
+            if (disjointSet.find(source) != disjointSet.find(destination)) {
+                    disjointSet.union(source, destination);
+                    disjointSet.addEdgeToGroup(destination, edge);
+            }
+        }
+        if (groups.contains(mst)) {
+            List<List<Edge>> edges = disjointSet.getGroups();
+            groups.set(groups.indexOf(mst), edges.get(0));
+            disjointSet.addAGroup(lonelyGroup, aux);
+            groups.add(aux);
+        } else {
+            groups.addAll(disjointSet.getGroups());
+            if (lonelyGroup != null) groups.add(aux);
+        }
+        System.out.println("Groups");
+
+        for (List<Edge> group : groups) {
+            for (Edge edge : group) {
+                System.out.print(edge+", ");
+            }
+            System.out.println("---");
+        }
+
+        cutMstIntoNGroups(n, getLessWeightGroup(groups, resultMstEdges.get(groups.size())), groups);
+        return groups;
     }
+
+    private boolean vertexInMst(Edge minorRemoved, List<Edge> mst) {
+        Set<Vertex> vertexSet = new HashSet<>();
+        for (Edge edge : mst) {
+            vertexSet.add(edge.getSource());
+            vertexSet.add(edge.getDestination());
+        }
+        boolean isInSrc = vertexSet.contains(minorRemoved.getSource());
+        boolean isInDest = vertexSet.contains(minorRemoved.getDestination());
+        if (isInSrc) lonelyGroup = minorRemoved.getDestination();
+        if (isInDest) lonelyGroup = minorRemoved.getSource();
+        return isInSrc && isInDest;
+    }
+
+    private List<Edge> getLessWeightGroup(List<List<Edge>> groups, Edge minorEdge) {
+        for (List<Edge> group : groups) {
+            for (Edge edge : group) if (edge.equals(minorEdge)) return group;
+        }
+        return groups.get(0);
+    }
+
 
     private boolean isStillConnected(List<Edge> result, Edge edge) {
         for (int i = 0; i < result.size(); i++) {
@@ -113,13 +174,11 @@ public class Graph{
         for (Edge edge : edgeList) {
             resultList.add(edge.getSource().getValue());
             resultList.add(edge.getDestination().getValue());
+            resultMst.add(edge.getSource());
+            resultMst.add(edge.getDestination());
         }
         return resultList.toString()
                 .substring(1,resultList.toString().length()-1)
                 .replace(",","");
-    }
-
-    public List<Edge> getVertexList(Vertex vertex) {
-        return vertexMap.get(vertex);
     }
 }
