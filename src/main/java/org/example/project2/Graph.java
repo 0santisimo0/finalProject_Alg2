@@ -6,10 +6,11 @@ public class Graph{
     private Map<Vertex, List<Edge>> vertexMap;
     private Set<Vertex> resultMst;
     private List<Edge> resultMstEdges;
-    private Vertex lonelyGroup;
+    private List<Vertex> lonelyGroup;
     public Graph() {
         this.vertexMap = new HashMap<>();
         this.resultMst = new HashSet<>();
+        this.lonelyGroup = new ArrayList<>();
     }
 
     public void addVertex(Vertex vertex) {
@@ -35,34 +36,42 @@ public class Graph{
 
         for (List<Edge> edgeList : vertexMap.values()) priorityQueue.addAll(edgeList);
 
+        runKruskalWithWeightMod(priorityQueue, friendshipValue, result);
+        resultMstEdges = result;
+        return result;
+    }
+
+    private void runKruskalWithWeightMod(PriorityQueue<Edge> priorityQueue, int friendshipValue, List<Edge> result) {
         DisjointSet disjointSet = new DisjointSet();
         for (Vertex vertex : vertexMap.keySet()) {
             disjointSet.makeSet(vertex);
         }
 
         while (!priorityQueue.isEmpty() && result.size() < vertexMap.size() - 1) {
-            Edge edge = priorityQueue.poll();
-            Vertex source = edge.getSource();
-            Vertex destination = edge.getDestination();
-            int weight = edge.getWeight();
+            instanceSubGroupsWithoutCycles(priorityQueue, result, disjointSet, friendshipValue);
+        }
+    }
 
-            if (disjointSet.find(source) != disjointSet.find(destination)
-                    && weight > friendshipValue) {
-                if (isStillConnected(result, edge)) {
-                    result.add(edge);
-                    disjointSet.union(source, destination);
-                }
+    private void instanceSubGroupsWithoutCycles(PriorityQueue<Edge> priorityQueue, List<Edge> result,
+                                                DisjointSet disjointSet, int friendshipValue) {
+        Edge edge = priorityQueue.poll();
+        assert edge != null;
+        Vertex source = edge.getSource();
+        Vertex destination = edge.getDestination();
+        int weight = edge.getWeight();
 
+        if (disjointSet.find(source) != disjointSet.find(destination)
+                && weight > friendshipValue) {
+            if (isStillConnected(result, edge)) {
+                result.add(edge);
+                disjointSet.union(source, destination);
             }
         }
-
-        resultMstEdges = result;
-        return result;
     }
 
     public String divideIntoNGroups(int n, List<Edge> mst) {
         if (n > resultMst.size() || n == 0) return "It is not possible";
-        resultMstEdges.stream().sorted(Comparator.comparingInt(Edge::getWeight));
+        resultMstEdges.sort(Comparator.comparingInt(Edge::getWeight));
 
         List<List<Edge>> groups = cutMstIntoNGroups(n, mst, new ArrayList<>());
         System.out.println(getGroupFriendshipLevel(groups,mst));
@@ -71,25 +80,43 @@ public class Graph{
     }
 
     public List<List<Edge>> cutMstIntoNGroups(int n, List<Edge> mst, List<List<Edge>> groups) {
-        if (n == groups.size()) return groups;
-        if (n == 1) {
-            groups.add(mst);
-            return groups;
-        } if (mst.isEmpty()) return groups;
+        if (!accomplishBaseCases(n, mst, groups)) return groups;
 
         mst.sort(Comparator.comparingInt(Edge::getWeight).reversed());
         Edge minorRemoved = mst.remove(mst.size()-1);
-        List<Edge> aux = new ArrayList<>();
+        List<List<Edge>> aux = setLonelyGroups(minorRemoved, mst);
 
-        if (vertexInMst(minorRemoved, mst)) lonelyGroup = null;
-        else aux.add(new Edge(lonelyGroup,lonelyGroup,minorRemoved.getWeight()));
-
-        Queue<Edge> queue = new LinkedList<>(mst);
         DisjointSet disjointSet = new DisjointSet();
+        runModifiedKruskalAlg(disjointSet, mst);
+
+        modifyGroupsWithSubGroups(groups, mst, aux, disjointSet);
+        lonelyGroup = new ArrayList<>();
+
+        Edge minorEdge = (resultMstEdges.size() >= groups.size()) ? resultMstEdges.get(groups.size())
+                : resultMstEdges.get(resultMstEdges.size()-1);
+
+        cutMstIntoNGroups(n, getLessWeightGroup(groups, minorEdge), groups);
+        return groups;
+    }
+
+    private void modifyGroupsWithSubGroups(List<List<Edge>> groups, List<Edge> mst, List<List<Edge>> aux, DisjointSet disjointSet) {
+        if (groups.contains(mst)) {
+            if (mst.isEmpty()) groups.remove(mst);
+            List<List<Edge>> edges = disjointSet.getGroups();
+            if (!edges.isEmpty()) groups.set(groups.indexOf(mst), edges.get(0));
+            groups.addAll(aux);
+        } else {
+            groups.addAll(disjointSet.getGroups());
+            if (!lonelyGroup.isEmpty()) groups.addAll(aux);
+        }
+    }
+
+    private void runModifiedKruskalAlg(DisjointSet disjointSet, List<Edge> mst) {
+        Queue<Edge> queue = new LinkedList<>(mst);
 
         for (Edge edge : mst) {
-                disjointSet.makeSet(edge.getSource());
-                disjointSet.makeSet(edge.getDestination());
+            disjointSet.makeSet(edge.getSource());
+            disjointSet.makeSet(edge.getDestination());
         }
 
         while (!queue.isEmpty()) {
@@ -98,23 +125,32 @@ public class Graph{
             Vertex destination = edge.getDestination();
 
             if (disjointSet.find(source) != disjointSet.find(destination)) {
-                    disjointSet.union(source, destination);
-                    disjointSet.addEdgeToGroup(destination, edge);
+                disjointSet.union(source, destination);
+                disjointSet.addEdgeToGroup(destination, edge);
             }
         }
+    }
 
-        if (groups.contains(mst)) {
-            List<List<Edge>> edges = disjointSet.getGroups();
-            groups.set(groups.indexOf(mst), edges.get(0));
-            disjointSet.addAGroup(lonelyGroup, aux);
-            groups.add(aux);
-        } else {
-            groups.addAll(disjointSet.getGroups());
-            if (lonelyGroup != null) groups.add(aux);
+    private List<List<Edge>> setLonelyGroups(Edge minorRemoved, List<Edge> mst) {
+        List<List<Edge>> aux = new ArrayList<>();
+        if (vertexInMst(minorRemoved, mst)) lonelyGroup = new ArrayList<>();
+        else addLonelyGroups(aux, minorRemoved);
+        return aux;
+    }
+
+    private void addLonelyGroups(List<List<Edge>> aux, Edge minorRemoved) {
+        aux.add(List.of(new Edge(lonelyGroup.get(0),lonelyGroup.get(0),minorRemoved.getWeight())));
+        if (lonelyGroup.size()>1) aux.add(
+                List.of(new Edge(lonelyGroup.get(1),lonelyGroup.get(1),minorRemoved.getWeight())));
+    }
+
+    private boolean accomplishBaseCases(int n, List<Edge> mst, List<List<Edge>> groups) {
+        if (n == groups.size()) return false;
+        if (n == 1) {
+            groups.add(mst);
+            return false;
         }
-
-        cutMstIntoNGroups(n, getLessWeightGroup(groups, resultMstEdges.get(groups.size())), groups);
-        return groups;
+        return !mst.isEmpty();
     }
 
     public String getGroupFriendshipLevel(List<List<Edge>> groups, List<Edge> mstEdges) {
@@ -135,6 +171,10 @@ public class Graph{
             }
         }
 
+        return printFriendshipLevelResult(closestGroup, notClosestGroup);
+    }
+
+    private String printFriendshipLevelResult(List<Edge> closestGroup, List<Edge> notClosestGroup) {
         return "\nGroup with strongest friendly relationship: "
                 +((!closestGroup.isEmpty()) ? printResultantEdges(closestGroup):"None")
                 +"\nGroup with least friendly relationship: "
@@ -158,8 +198,12 @@ public class Graph{
         }
         boolean isInSrc = vertexSet.contains(minorRemoved.getSource());
         boolean isInDest = vertexSet.contains(minorRemoved.getDestination());
-        if (isInSrc) lonelyGroup = minorRemoved.getDestination();
-        if (isInDest) lonelyGroup = minorRemoved.getSource();
+        if (isInSrc) lonelyGroup.add(minorRemoved.getDestination());
+        if (isInDest) lonelyGroup.add(minorRemoved.getSource());
+        if (!isInDest && !isInSrc) {
+            lonelyGroup.add(minorRemoved.getSource());
+            lonelyGroup.add(minorRemoved.getDestination());
+        }
         return isInSrc && isInDest;
     }
 
@@ -172,13 +216,12 @@ public class Graph{
 
 
     private boolean isStillConnected(List<Edge> result, Edge edge) {
-        for (int i = 0; i < result.size(); i++) {
-            List<Edge> edgesSrc = vertexMap.get(result.get(i).getSource());
-            List<Edge> edgesDest = vertexMap.get(result.get(i).getDestination());
-            if (searchEdge(edgesSrc, edge) || searchEdge(edgesDest, edge)) {
-                return true;
-            }
-        } return result.isEmpty();
+        for (Edge value : result) {
+            List<Edge> edgesSrc = vertexMap.get(value.getSource());
+            List<Edge> edgesDest = vertexMap.get(value.getDestination());
+            if (searchEdge(edgesSrc, edge) || searchEdge(edgesDest, edge)) return true;
+        }
+        return result.isEmpty();
     }
 
     private boolean searchEdge(List<Edge> edges, Edge edge) {

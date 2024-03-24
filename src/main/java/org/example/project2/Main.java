@@ -15,7 +15,7 @@ public class Main {
         List<Edge> mst = graph.kruskal(10);
         System.out.println(graph.printResultantEdges(mst));
 
-        String groups = graph.divideIntoNGroups(3,mst);
+        String groups = graph.divideIntoNGroups(4,mst);
         System.out.println(groups);
     }
 }
